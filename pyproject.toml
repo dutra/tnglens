@@ -7,6 +7,7 @@ name = "tnglens"
 version = "0.1.0"
 description = "Lens maps, multiple-image catalogs and truth tables from TNG-Cluster halos"
 requires-python = ">=3.11"
+license = {text = "BSD-3-Clause"}
 dependencies = ["numpy", "scipy", "h5py", "astropy", "pyyaml", "py-sphviewer2>=2.0.3"]
 
 [project.optional-dependencies]
