@@ -1,0 +1,13 @@
+# The catalog of the tngc014 mock: class quotas, systems tied to satellites and knots (docs/catalog.md).
+# These are the defaults of the catalog section, written out; max_candidates is lower than the default 20000.
+# Use it as the `catalog:` section of a run config, or directly:
+#   python -m tnglens.catalog LENS.h5 --config configs/tngc014_mock.yaml --out DIR --workers 8
+# The numbers are those of geometric_telescope/scripts/build_tngc014_mock.py: 69 systems, about 300 images.
+catalog:
+  seed: 20261111
+  max_candidates: 4000
+  quotas: {wide: 22, intermediate: 14, cusp: 8, fold: 15, subhalo: 10}
+  sources:
+    # the pool of the original script: 500 general, 600 near-critical and 600 near-satellite seeds
+    seed_kinds: {negative: 0.30, critical: 0.35, subhalo: 0.35}
+  knots: {n_systems: 12}
