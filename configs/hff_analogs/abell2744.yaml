@@ -1,0 +1,118 @@
+# TNG-Cluster analog of Abell 2744: how its lens fields and mock catalogs are generated.
+#
+#   tnglens run configs/hff_analogs/abell2744.yaml
+#
+# Observed cluster: Abell 2744, z = 0.3072, theta_E = 27.5" at z_s = 6.
+# Analog: halo 1805203 (the primary target of zoom 9) at snapshot 78, z = 0.2977, M200c = 1.04e15 Msun, seen along
+# the simulation x axis (yz view), theta_E = 27.3" at z_s = 6.  It is the rank-one Einstein-radius match of
+# ggsl_env/lenscluster/analog_matches.py (projection axis 0 of that table).
+# Product: <output_root>/tngc_z009_s078_yz/ with lens.h5 (the lens fields), observed/ (images.yaml, members.yaml) and
+# truth/.  Every value that shapes the product is written out below; nothing is left to the package defaults.
+
+# ----------------------------------------------------------------------------- simulation and paths
+simulation:
+  name: tngc                                        # TNG-Cluster (L680n8192TNG zooms)
+  base: /ironwolf/TNGC/output                       # groups_NNN/ and snapdir_NNN/
+  offsets: null                                     # <base>/../postprocessing/offsets
+
+cache_root: /data/dev/tnglens                       # particles, smoothing lengths, projections
+output_root: /data/dev/tnglens/runs/hff_analogs
+
+# ----------------------------------------------------------------------------- cosmology
+# Flat LCDM with the parameters of the simulation (Planck 2015; Planck Collaboration XIII 2016): h = 0.6774,
+# Omega_m = 0.3089, Omega_Lambda = 0.6911.  These are the values of the snapshot header, written out so that the
+# catalog states its own cosmology.  It sets the angular scale (kpc per arcsec), the critical density and the
+# distance ratios D_ds/D_s of every source; particle masses and physical lengths do not depend on it.  A fit of
+# these catalogs must use the same values.
+cosmology: {H0: 67.74, Om0: 0.3089}
+
+# ----------------------------------------------------------------------------- the lens
+halos:
+  - {halo_id: 1805203, snapshot: 78, axes: [yz]}   # the lens redshift is the snapshot redshift, 0.2977
+
+source_redshifts: [2.0, 4.0, 6.0, 9.0]              # one magnification map per redshift in lens.h5
+particle_types: [0, 1, 2, 4, 5]                     # gas, dark matter, low-resolution dark matter, stars, black holes
+
+projection:
+  neighbors: 64                                     # smoothing length = distance to the 64th neighbour of the same type
+  support_floor_pkpc: 1.48                          # minimum smoothing length: the force softening
+  gas_support: neighbors
+  target_cells_per_h: 8                             # kernels of 8 pixels or more are rendered by sphviewer2
+  core_width_arcsec: 400.0                          # side of the lens map
+  core_resolution: 4096                             # 0.098 arcsec pixels
+  environment_width_r200: 4.0                       # coarse grid for the mass outside the map
+  environment_resolution: 2048
+  depth_half_r200: 2.0                              # particles within +-2 R200c along the line of sight
+
+workers: 1
+threads: 6
+read_chunk: 2000000
+keep_particles: false
+
+# ----------------------------------------------------------------------------- the mock catalog
+# The recipe of the tngc014 mock (docs/catalog.md).  The four clusters use the same recipe and the same seed.
+catalog:
+  seed: 20261111
+  workers: 4
+  batch: 64
+  max_candidates: 20000
+  search_half: auto                                 # the trusted half-width of the map, about 198 arcsec
+  finder_stride: 2                                  # image-finder mesh: every 2nd map pixel
+
+  # 69 systems kept by class.  The fold quota is split evenly over pair separations of 0.3-0.7, 0.7-1.5 and
+  # 1.5-3 arcsec.  A wide system with only two observable images is kept with probability 0.3.
+  quotas: {wide: 22, intermediate: 14, cusp: 8, fold: 15, subhalo: 10}
+  selection: {fold_bins: [0.3, 0.7, 1.5, 3.0], wide_pair_keep: 0.3, max_per_satellite: 2}
+
+  sources:
+    redshift:                                       # uniform within each bin
+      edges: [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.5, 6.0, 8.0]
+      weights: [0.10, 0.17, 0.20, 0.17, 0.12, 0.12, 0.08, 0.04]
+    # image-plane seeds: a node with det A < 0, one near a critical curve, one near a massive satellite
+    seed_kinds: {negative: 0.30, critical: 0.35, source: 0.0, subhalo: 0.35}
+    seed_radius: [5.0, auto]                        # seeds between these radii [arcsec]; auto = 95/110 of search_half
+    critical_det: [0.05, 0.02, 0.008, 0.003]        # |det A| thresholds of the critical kind
+    duplicate_dz: 0.05                              # a source this close in redshift and position to a kept one
+    duplicate_dbeta: 1.0                            # is rejected [arcsec]
+
+  # An image is observable when |mu| > 0.25 and it is more than 3 arcsec from the BCG.  A system needs two
+  # observable images, and is rejected whole when two of them are closer than 0.3 arcsec (the softening is 0.28).
+  observability: {mu_min: 0.25, bcg_radius: 3.0, min_separation: 0.3, min_images: 2}
+
+  noise:
+    sigma_pos: 0.03                                 # Gaussian position noise per axis [arcsec]
+    photoz_fraction: 0.12                           # systems with a photometric redshift
+    photoz_sigma: 0.06                              # its scatter, times (1 + z)
+    photoz_zmin: 0.8
+    source_mag: [26.0, 29.0]                        # source magnitude; image mag = m - 2.5 log10 |mu|
+
+  # Images tied to satellites: remove one satellite's bound particles, refit the source, solve again.
+  subhalos:
+    enabled: true
+    min_mass: 3.0e+10                               # satellites tested [Msun, bound mass]
+    shift_tol: 0.5                                  # tied when the image vanishes or moves by more than this [arcsec]
+    radius_einstein: 4.0                            # within this many point-mass Einstein radii of the satellite,
+    radius_clip: [1.5, 6.0]                         # clipped to this range [arcsec]
+    match_radius: 5.0
+    patch_half: 40.0                                # the satellite's own grid: 80 arcsec wide, 0.08 arcsec pixels,
+    patch_pixels: 1000
+    patch_keep: 30.0
+    patch_sigma_pixels: 2.0                         # smoothed by 0.16 arcsec
+    seed_min_mass: 1.0e+11                          # the subhalo seeds: satellites above this mass [Msun],
+    seed_radius: 4.0                                # seeds within this distance of one [arcsec],
+    seed_min_centre: 8.0                            # satellites farther than this from the BCG [arcsec]
+
+  # Knots: the 12 most magnified systems get 1 or 2 more point sources 0.03-0.15 arcsec from the source centre.
+  knots: {n_systems: 12, extra: [1, 2], offset: [0.03, 0.15], tries: 6, min_sep: 0.08, max_sep: 4.0, mag_offset: 1.0}
+
+  # Members: Subfind galaxies brighter than 24 within 120 arcsec and 2 R200c along the line of sight.  The magnitude
+  # is the rest-frame SDSS z band plus the distance modulus minus 2.5 log10(1 + z), named F125W.
+  members:
+    enabled: true
+    mag_limit: 24.0
+    radius: 120.0
+    los_r200c: 2.0
+    band_index: 7
+    band_name: F125W
+    shapes: snapshot                                # stellar second moments from the snapshot chunk
+    shape_min_particles: 50
