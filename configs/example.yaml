@@ -1,0 +1,50 @@
+# tnglens example configuration.  Every key is optional except `halos`; the values shown are
+# the defaults (the fiducial numerical settings of the old cosmic_telescope pipeline).
+# Relative paths are resolved against the current working directory.
+
+simulation:
+  name: tngc                        # only TNG-Cluster is supported
+  base: /ironwolf/TNGC/output       # holds groups_NNN/ and snapdir_NNN/
+  offsets: null                     # offsets directory; default <base>/../postprocessing/offsets
+
+cache_root: /data/dev/tnglens       # particles, smoothing lengths, projections (bulk, reusable, shareable by runs)
+output_root: ./output               # lens files: <output_root>/<name>/lens.h5
+
+# Lens cosmology: "native" = the simulation's (Planck 2015 from the snapshot header), or
+# {H0: 70, Om0: 0.3} (flat LCDM).  Only angular scales and critical densities change; particle
+# masses and physical lengths never do.  The lens redshift is always the snapshot redshift.
+cosmology: native
+
+# Halos: snapshot plus `zoom` (the zoom's primary target) or `halo_id` (a global FoF group id).
+# Each of snapshot / zoom / halo_id may be a list; lists expand to every combination.
+# `axes` defaults to the top-level `axes`.  `tnglens list` shows what is on disk.
+halos:
+  - {zoom: 14, snapshot: 73, axes: [yz]}
+  # - {zoom: [0, 1, 2, 3], snapshot: [72, 73]}
+  # - {halo_id: 2571291, snapshot: 73, axes: [xy, zx]}
+
+axes: [xy, yz, zx]                  # map (x, y) = first two letters; line of sight = the third axis
+
+source_redshifts: [2.0, 4.0, 9.0]   # one mu_zs<z> map per redshift; must be behind the lens
+
+particle_types: [0, 1, 2, 4, 5]     # gas, dark matter, low-res dark matter, stars (incl. wind), black holes
+
+projection:
+  neighbors: 64                     # smoothing length = distance to the 64th same-type neighbour
+  support_floor_pkpc: 1.48          # minimum smoothing length (TNG-Cluster softening) [pkpc]
+  gas_support: neighbors            # or "cells": gas uses 2 x the radius of its Voronoi cell volume
+  target_cells_per_h: 8             # kernels >= this many pixels go to sphviewer2, smaller to the stencil/CIC
+  core_width_arcsec: 400.0          # side of the lens map [arcsec]
+  core_resolution: 4096             # pixels per side (power of two)
+  environment_width_r200: 4.0       # side of the coarse grid, in R200c (at least 1.5 x the core)
+  environment_resolution: 2048      # pixels per side (power of two)
+  depth_half_r200: 2.0              # particles within +-2 R200c of the halo along the line of sight
+
+workers: 1                          # halos processed in parallel (separate processes)
+threads: 8                          # threads per worker: tree search, sphviewer2, FFTs
+read_chunk: 2000000                 # particles read per chunk
+keep_particles: true                # false: once a halo is done, delete the particle/smoothing caches
+                                    # this run built (not older ones, not ones another run is using)
+
+# catalog: {...}                    # if present, passed unchanged to tnglens.catalog.build_catalog;
+                                    # unknown keys are rejected when the config is loaded
