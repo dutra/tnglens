@@ -72,7 +72,7 @@ def test_deflection_jacobian_of_gaussian_reproduces_kappa_and_shear():
     assert np.abs(0.5 * (axx + ayy) - exact["kappa"])[inner].max() < 2e-3
     assert np.abs(0.5 * (axx - ayy) - exact["gamma1"])[inner].max() < 2e-3
     assert np.abs(0.5 * (axy + ayx) - exact["gamma2"])[inner].max() < 2e-3
-    # The central-difference form of the old pipeline agrees to O(step^2).
+    # A central difference of +-0.02 arcsec of the same spline agrees to O(step^2).
     cd = deflection_jacobian(exact["alpha_x"], exact["alpha_y"], x, x, step=0.02)
     for a, b in zip((axx, axy, ayx, ayy), cd):
         assert np.abs(a - b)[inner].max() < 1e-4

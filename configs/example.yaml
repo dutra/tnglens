@@ -1,5 +1,5 @@
 # tnglens example configuration.  Every key is optional except `halos`; the values shown are
-# the defaults (the fiducial numerical settings of the old cosmic_telescope pipeline).
+# the defaults.
 # Relative paths are resolved against the current working directory.
 
 simulation:

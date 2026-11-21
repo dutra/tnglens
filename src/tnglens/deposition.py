@@ -8,8 +8,7 @@ go through :func:`deposit_small`:
   particle's mass is exact up to the part that falls outside the image;
 * ``h < 1.5`` pixels: cloud-in-cell, which conserves mass and the first moments.
 
-This is a vectorised NumPy port of ``deposit_small`` in the old ``cosmic_telescope`` pipeline
-(numba there); the arithmetic is the same, only the summation order differs.
+The deposit is vectorised NumPy and needs no compiled extension.
 """
 from __future__ import annotations
 
